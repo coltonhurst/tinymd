@@ -3,6 +3,8 @@ name = "tinymd"
 version = "0.1.0"
 authors = ["coltonhurst.com <colton@coltonhurst.com>"]
 edition = "2018"
+description = "A tiny markdown compiler."
+homepage = "https://www.coltonhurst.com"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
