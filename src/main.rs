@@ -1,4 +1,98 @@
-fn parse_markdown_file() {}
+use std::fs::File;
+use std::io::Write;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+
+fn parse_markdown_file(_filename: &str) {
+    print_short_banner();
+    println!("[ INFO ] Starting parser!");
+
+    // Create a path variable from the filename
+    let input_filename = Path::new(_filename);
+
+    // Try to open the file
+    let file = File::open(&input_filename).expect("[ ERROR ] Failed to open file!");
+
+    // Create a place to store all our tokens
+    let mut tokens: Vec<String> = Vec::new();
+
+    // Read the file line-by-line
+    let reader = BufReader::new(file);
+
+    let mut _ptag: bool = false; // keep track of paragraph enclosures
+    let mut _htag: bool = false;
+
+    for line in reader.lines() {
+        let line_contents = line.unwrap();
+
+        let mut first_char: Vec<char> = line_contents.chars().take(1).collect();
+
+        // Now check the first character to for headings
+        let mut s = String::new();
+        let slice = &line_contents.to_string();
+        match first_char.pop() {
+            Some('#') => {
+                if _ptag {
+                    _ptag = false;
+                    s.push_str("</p>\n"); // adding \n for instructional clarity
+                }
+                if _htag {
+                    _htag = false;
+                    s.push_str("</h1>\n"); // close it if we're already open
+                }
+
+                _htag = true;
+                s.push_str("<h1>");
+                s.push_str(&slice[2..]); // Get all but the first two characters
+            }
+
+            _ => {
+                if _htag {
+                    _htag = false;
+                    s.push_str("</h1>\n");
+                }
+
+                if !_ptag {
+                    _ptag = true;
+                    s.push_str("<p>");
+                }
+
+                s.push_str(&slice);
+            }
+        };
+
+        // At the very end, check if any of the tag bools are still open. If so,
+        // close them.
+        if _htag {
+            _htag = false;
+            s.push_str("</h1>\n");
+        }
+
+        if _ptag {
+            _ptag = false;
+            s.push_str("</p>\n");
+        }
+
+        // Don't push blank lines
+        if s != "<p></p>\n" {
+            tokens.push(s);
+        }
+    }
+
+    // Create an output file based on the input file, minus ".md"
+    let _output_filename = &_filename[.._filename.len() - 3];
+    let mut output_filename = String::from(_output_filename);
+    output_filename.push_str(".html");
+
+    let mut outfile =
+        File::create(output_filename.to_string()).expect("[ ERROR ] Could not create output file!");
+
+    for line in &tokens {
+        outfile
+            .write_all(line.as_bytes())
+            .expect("[ ERROR ] Could not write to output file!");
+    }
+}
 
 fn get_title() -> String {
     let mut the_title = String::from(env!("CARGO_PKG_NAME"));
@@ -27,5 +121,13 @@ fn usage() {
 }
 
 fn main() {
-    usage();
+    let args: Vec<String> = std::env::args().collect();
+
+    match args.len() {
+        2 => parse_markdown_file(&args[1]),
+        _ => {
+            println!("[ ERROR ] No input file specified!");
+            usage();
+        }
+    }
 }
